@@ -28,6 +28,18 @@ router.get('/', (req: any, res) => {
   const maxBid = Math.max(0, Math.round(bmb - tp));
   const br = expectedProfit < 0 ? 'Do Not Buy' : roi >= 50 && margin >= 30 ? 'Excellent Buy' : roi >= 25 && margin >= 18 ? 'Good Buy' : roi >= 10 && margin >= 8 ? 'Marginal' : roi >= 0 && margin >= 0 ? 'High Risk' : 'Do Not Buy';
   let conf = 'medium'; if (roi > 40 && margin > 25) conf = 'high'; else if (roi < 10 || margin < 10 || expectedProfit < 0) conf = 'low';
-  res.json({ cleanTitleValue: vals.clean, rebuiltTitleValue: vals.rebuilt, estimatedSalePrice: salePrice, totalPartsCost: partsCost, totalLabor: laborCost, totalRepairCost, transportation: 0, auctionFees: 0, totalInvestment, contingencyAmount, expectedProfit, roi, profitMargin: margin, maxBidRecommendation: maxBid, confidence: conf, buyRecommendation: br, profitGoalType: pgt, profitGoalValue: pgv, contingencyPercent: cp });
+  res.json({
+    clean_title_value: vals.clean,
+    estimated_sale_price: salePrice,
+    total_repair_cost: totalRepairCost,
+    contingency_amount: contingencyAmount,
+    total_investment: totalInvestment,
+    expected_profit: expectedProfit,
+    roi_percent: roi,
+    profit_margin_percent: margin,
+    max_recommended_bid: maxBid,
+    recommendation: br,
+    confidence: conf.charAt(0).toUpperCase() + conf.slice(1),
+  });
 });
 export default router;
