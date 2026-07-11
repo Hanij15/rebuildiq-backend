@@ -1,0 +1,13 @@
+import { Router } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import db from '../db/index.js';
+import { authMiddleware } from '../middleware/auth.js';
+const router = Router();
+router.use(authMiddleware as any);
+router.get('/', (req: any, res) => { const vehicles = db.prepare('SELECT * FROM vehicles WHERE user_id = ? ORDER BY updated_at DESC').all(req.userId); res.json(vehicles); });
+router.post('/', (req: any, res) => { const id = uuidv4(); db.prepare('INSERT INTO vehicles (id, user_id, vin) VALUES (?, ?, ?)').run(id, req.userId, req.body.vin || ''); db.prepare('UPDATE vehicles SET is_active = 0 WHERE user_id = ?').run(req.userId); db.prepare('UPDATE vehicles SET is_active = 1 WHERE id = ?').run(id); db.prepare('INSERT OR IGNORE INTO repair_estimates (vehicle_id) VALUES (?)').run(id); const vehicle = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(id); res.status(201).json(vehicle); });
+router.get('/:id', (req: any, res) => { const v = db.prepare('SELECT * FROM vehicles WHERE id = ? AND user_id = ?').get(req.params.id, req.userId) as any; if (!v) { res.status(404).json({ error: 'Not found' }); return; } const damage = db.prepare('SELECT * FROM damage_items WHERE vehicle_id = ?').all(req.params.id); const repairs = db.prepare('SELECT * FROM repair_items WHERE vehicle_id = ?').all(req.params.id); const estimate = db.prepare('SELECT * FROM repair_estimates WHERE vehicle_id = ?').get(req.params.id); const comparables = db.prepare('SELECT * FROM comparables WHERE vehicle_id = ?').all(req.params.id); res.json({ ...v, damage, repairs, estimate, comparables }); });
+router.put('/:id', (req: any, res) => { const allowed = ['year','make','model','trim','mileage','engine','transmission','drivetrain','body_class','fuel_type','title_status','exterior_color','profit_goal_type','profit_goal_value','contingency_percent']; const sets: string[] = []; const vals: any[] = []; for (const k of allowed) if (req.body[k] !== undefined) { sets.push(`${k} = ?`); vals.push(req.body[k]); } if (sets.length === 0) { res.status(400).json({ error: 'No fields to update' }); return; } vals.push(req.params.id, req.userId); db.prepare(`UPDATE vehicles SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`).run(...vals); res.json({ success: true }); });
+router.delete('/:id', (req: any, res) => { db.prepare('DELETE FROM vehicles WHERE id = ? AND user_id = ?').run(req.params.id, req.userId); res.json({ success: true }); });
+router.post('/:id/activate', (req: any, res) => { db.prepare('UPDATE vehicles SET is_active = 0 WHERE user_id = ?').run(req.userId); db.prepare('UPDATE vehicles SET is_active = 1 WHERE id = ? AND user_id = ?').run(req.params.id, req.userId); res.json({ success: true }); });
+export default router;

@@ -1,0 +1,8 @@
+import { Router } from 'express';
+import db from '../db/index.js';
+import { authMiddleware } from '../middleware/auth.js';
+import { calculateValue } from '../services/valuation.js';
+const router = Router({ mergeParams: true });
+router.use(authMiddleware as any);
+router.get('/', (req: any, res) => { const v = db.prepare('SELECT * FROM vehicles WHERE id = ? AND user_id = ?').get(req.params.id, req.userId) as any; if (!v) { res.status(404).json({ error: 'Not found' }); return; } const damage = db.prepare('SELECT * FROM damage_items WHERE vehicle_id = ?').all(req.params.id); const repairs = db.prepare('SELECT * FROM repair_items WHERE vehicle_id = ? AND selected = 1').all(req.params.id); const est = db.prepare('SELECT * FROM repair_estimates WHERE vehicle_id = ?').get(req.params.id); const vals = calculateValue(v.make, v.year, v.mileage, v.trim); const partsCost = (repairs as any[]).reduce((s, r) => s + (r.override_price || r.estimated_cost) * r.quantity, 0); let laborCost = 0; if (est) { const e = est as any; if (e.use_total_override && e.total_override > 0) laborCost = e.total_override; else laborCost = (e.body_labor_hours * e.body_labor_rate) + (e.paint_labor_hours * e.paint_labor_rate) + (e.mech_labor_hours * e.mech_labor_rate) + (e.frame_labor_hours * e.frame_labor_rate) + e.paint_materials + e.shop_supplies + e.alignment_cost + e.adas_calibration + e.misc_cost + e.transport_cost + e.other_cost; } res.json({ vehicle: v, valuation: vals, damageCount: (damage as any[]).length, partsSelected: (repairs as any[]).length, partsCost, laborCost, totalRepairCost: partsCost + laborCost, generatedAt: new Date().toISOString() }); });
+export default router;
