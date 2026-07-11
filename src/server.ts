@@ -33,16 +33,23 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(morgan('dev'));
 app.use(express.json());
 
+// Auth routes
 app.use('/api/auth', authRoutes);
-app.use('/api/vehicles', vehicleRoutes);
+
+// Vehicle sub-routes MUST come before /api/vehicles
 app.use('/api/vehicles/:id/decode-vin', vinRoutes);
 app.use('/api/vehicles/:id/damage', damageRoutes);
 app.use('/api/vehicles/:id/repairs', repairRoutes);
 app.use('/api/vehicles/:id/estimate', estimateRoutes);
 app.use('/api/vehicles/:id/market', marketRoutes);
-app.use('/api', partsRoutes);
 app.use('/api/vehicles/:id/profit', profitRoutes);
 app.use('/api/vehicles/:id/report', reportRoutes);
+
+// Main vehicle routes (catch-all for /api/vehicles)
+app.use('/api/vehicles', vehicleRoutes);
+
+// Parts catalog (global)
+app.use('/api', partsRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
